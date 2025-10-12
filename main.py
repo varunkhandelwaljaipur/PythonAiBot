@@ -24,7 +24,8 @@ app = Flask(__name__)
 # Configure Gemini
 try:
     genai.configure(api_key=GEMINI_API_KEY)
-    model = genai.GenerativeModel('gemini-2.5-flash')
+    # --- FIX: Changed to the standard 'gemini-pro' model ---
+    model = genai.GenerativeModel('gemini-pro')
     logger.info("Gemini AI model initialized successfully.")
 except Exception as e:
     logger.error(f"Error initializing Gemini AI: {e}")
@@ -73,7 +74,8 @@ def webhook_handler():
             # --- Call Gemini API ---
             try:
                 response = model.generate_content(user_message)
-                bot_reply = response.text
+                # --- CHANGE: Modified the reply style ---
+                bot_reply = f"🤖 {response.text}"
             except Exception as e:
                 logger.error(f"Error generating content from Gemini: {e}")
                 bot_reply = "Sorry, I encountered an error while processing your request. Please try again later."
@@ -114,5 +116,4 @@ if __name__ == '__main__':
     # This part is for local testing. 
     # When deploying to a service like Render, it will use a Gunicorn server.
     app.run(debug=True, port=int(os.environ.get('PORT', 8080)))
-
 
