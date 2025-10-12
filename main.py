@@ -24,9 +24,9 @@ app = Flask(__name__)
 # Configure Gemini
 try:
     genai.configure(api_key=GEMINI_API_KEY)
-    # --- Using the standard 'gemini-pro' model ---
-    model = genai.GenerativeModel('gemini-pro')
-    logger.info("Gemini AI model 'gemini-pro' initialized successfully.")
+    # --- FIX: Using the correct model name from your AI Studio list ---
+    model = genai.GenerativeModel('gemini-2.5-flash')
+    logger.info("Gemini AI model 'gemini-2.5-flash' initialized successfully.")
 except Exception as e:
     logger.error(f"Error initializing Gemini AI: {e}")
     model = None
