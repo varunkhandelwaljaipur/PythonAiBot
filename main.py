@@ -1,5 +1,6 @@
 import os
 import logging
+import asyncio
 import google.generativeai as genai
 from flask import Flask, request, jsonify
 import telegram
@@ -25,7 +26,6 @@ app = Flask(__name__)
 # Configure Gemini
 try:
     genai.configure(api_key=GEMINI_API_KEY)
-    # --- FIX: Using the correct model name from your AI Studio list ---
     model = genai.GenerativeModel('gemini-2.5-flash')
     logger.info("Gemini AI model 'gemini-2.5-flash' initialized successfully.")
 except Exception as e:
@@ -40,10 +40,56 @@ except Exception as e:
     logger.error(f"Error initializing Telegram Bot: {e}")
     bot = None
 
-# --- WEBHOOK HANDLER ---
+# --- ASYNCHRONOUS HANDLERS ---
+async def handle_command(chat_id, command):
+    """Handles specific commands like /start."""
+    if command.startswith('/start'):
+        welcome_message = (
+            "Hello! I'm a chatbot powered by Google's Gemini AI. 🚀\n\n"
+            "Just send me a message, and I'll do my best to respond. "
+            "You can ask me questions, ask for summaries, or just have a chat!"
+        )
+        await bot.send_message(chat_id=chat_id, text=welcome_message)
+        logger.info(f"Sent /start command response to chat_id {chat_id}")
+    else:
+        unknown_command_message = "Sorry, I don't recognize that command."
+        await bot.send_message(chat_id=chat_id, text=unknown_command_message)
+
+async def process_update(update_data):
+    """Processes a single update from Telegram asynchronously."""
+    update = telegram.Update.de_json(update_data, bot)
+    
+    if update.message and update.message.text:
+        chat_id = update.message.chat_id
+        user_message = update.message.text
+
+        # Ignore commands for the Gemini model
+        if user_message.startswith('/'):
+            await handle_command(chat_id, user_message)
+            return
+
+        logger.info(f"Received message from chat_id {chat_id}: {user_message}")
+
+        # Send "typing..." action to the user
+        await bot.send_chat_action(chat_id=chat_id, action=ChatAction.TYPING)
+
+        # --- Call Gemini API ---
+        try:
+            response = await model.generate_content_async(user_message)
+            bot_reply = f"🤖 {response.text}"
+        except Exception as e:
+            logger.error(f"Error generating content from Gemini: {e}")
+            bot_reply = "Sorry, I encountered an error while processing your request. Please try again later."
+        
+        # Send the response back to the user
+        await bot.send_message(chat_id=chat_id, text=bot_reply)
+        logger.info(f"Sent reply to chat_id {chat_id}: {bot_reply[:80]}...")
+
+
+# --- WEBHOOK HANDLER (SYNCHRONOUS) ---
 @app.route('/webhook', methods=['POST'])
 def webhook_handler():
-    """Handles incoming updates from Telegram."""
+    """Handles incoming updates from Telegram by running the async logic."""
     # Verify the secret token
     secret_token = request.headers.get('X-Telegram-Bot-Api-Secret-Token')
     if secret_token != WEBHOOK_SECRET_TOKEN:
@@ -56,55 +102,15 @@ def webhook_handler():
 
     try:
         update_data = request.get_json()
-        update = telegram.Update.de_json(update_data, bot)
-        
-        if update.message and update.message.text:
-            chat_id = update.message.chat_id
-            user_message = update.message.text
-
-            # Ignore commands for the Gemini model
-            if user_message.startswith('/'):
-                handle_command(chat_id, user_message)
-                return jsonify(status="ok")
-
-            logger.info(f"Received message from chat_id {chat_id}: {user_message}")
-
-            # Send "typing..." action to the user
-            bot.send_chat_action(chat_id=chat_id, action=ChatAction.TYPING)
-
-            # --- Call Gemini API ---
-            try:
-                response = model.generate_content(user_message)
-                # --- CHANGE: Modified the reply style ---
-                bot_reply = f"🤖 {response.text}"
-            except Exception as e:
-                logger.error(f"Error generating content from Gemini: {e}")
-                bot_reply = "Sorry, I encountered an error while processing your request. Please try again later."
-            
-            # Send the response back to the user
-            bot.send_message(chat_id=chat_id, text=bot_reply)
-            logger.info(f"Sent reply to chat_id {chat_id}: {bot_reply[:80]}...")
+        # Run the asynchronous processing function
+        asyncio.run(process_update(update_data))
 
     except Exception as e:
         logger.error(f"Error in webhook handler: {e}")
-        # Return a 200 OK to Telegram even if an error occurs,
-        # to prevent it from resending the update repeatedly.
+        # Return a 200 OK to Telegram to prevent it from resending the update.
     
     return jsonify(status="ok")
 
-def handle_command(chat_id, command):
-    """Handles specific commands like /start."""
-    if command.startswith('/start'):
-        welcome_message = (
-            "Hello! I'm a chatbot powered by Google's Gemini AI. 🚀\n\n"
-            "Just send me a message, and I'll do my best to respond. "
-            "You can ask me questions, ask for summaries, or just have a chat!"
-        )
-        bot.send_message(chat_id=chat_id, text=welcome_message)
-        logger.info(f"Sent /start command response to chat_id {chat_id}")
-    else:
-        unknown_command_message = "Sorry, I don't recognize that command."
-        bot.send_message(chat_id=chat_id, text=unknown_command_message)
 
 # --- HEALTH CHECK ENDPOINT ---
 @app.route('/')
