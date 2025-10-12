@@ -3,6 +3,7 @@ import logging
 import google.generativeai as genai
 from flask import Flask, request, jsonify
 import telegram
+from telegram.constants import ChatAction
 
 # --- CONFIGURATION ---
 # It's highly recommended to use environment variables for your API keys.
@@ -69,7 +70,7 @@ def webhook_handler():
             logger.info(f"Received message from chat_id {chat_id}: {user_message}")
 
             # Send "typing..." action to the user
-            bot.send_chat_action(chat_id=chat_id, action=telegram.ChatAction.TYPING)
+            bot.send_chat_action(chat_id=chat_id, action=ChatAction.TYPING)
 
             # --- Call Gemini API ---
             try:
