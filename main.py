@@ -5,6 +5,10 @@ import google.generativeai as genai
 from flask import Flask, request, jsonify
 import telegram
 from telegram.constants import ChatAction
+import nest_asyncio
+
+# Apply the patch to allow nested event loops
+nest_asyncio.apply()
 
 # --- CONFIGURATION ---
 # It's highly recommended to use environment variables for your API keys.
