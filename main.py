@@ -24,7 +24,7 @@ app = Flask(__name__)
 # Configure Gemini
 try:
     genai.configure(api_key=GEMINI_API_KEY)
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    model = genai.GenerativeModel('gemini-2.5-flash')
     logger.info("Gemini AI model initialized successfully.")
 except Exception as e:
     logger.error(f"Error initializing Gemini AI: {e}")
@@ -114,4 +114,5 @@ if __name__ == '__main__':
     # This part is for local testing. 
     # When deploying to a service like Render, it will use a Gunicorn server.
     app.run(debug=True, port=int(os.environ.get('PORT', 8080)))
+
 
