@@ -24,19 +24,9 @@ app = Flask(__name__)
 # Configure Gemini
 try:
     genai.configure(api_key=GEMINI_API_KEY)
-
-    # --- NEW: Code to list available models ---
-    logger.info("--- AVAILABLE GEMINI MODELS ---")
-    for m in genai.list_models():
-      # We only care about models that support the 'generateContent' method
-      if 'generateContent' in m.supported_generation_methods:
-        logger.info(f"Model found: {m.name}")
-    logger.info("-----------------------------")
-
-    # We will attempt to initialize with 'gemini-pro', but the log above will tell us the correct name.
+    # --- Using the standard 'gemini-pro' model ---
     model = genai.GenerativeModel('gemini-pro')
-    logger.info("Attempting to initialize with 'gemini-pro'.")
-
+    logger.info("Gemini AI model 'gemini-pro' initialized successfully.")
 except Exception as e:
     logger.error(f"Error initializing Gemini AI: {e}")
     model = None
