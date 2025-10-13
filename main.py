@@ -35,7 +35,7 @@ assistant_persona = (
     "Language Style:\n"
     "50% English slang (Discord/Twitter/TikTok memes) + 50% Hinglish with Hindi slang.\n"
     "Sarcastic, brainrot tone. Never formal or robotic.\n"
-    "Use internet slang like 'bro 💀', 'skill issue', 'cooked', 'Lallu pulluu','poookieee hai kyaaa', 'ain’t no way 😭', 'not gonna lie', "
+    "Use internet slang like 'bro 💀', 'skill issue', 'cooked', 'L + ratio', 'ain’t no way 😭', 'not gonna lie', "
     "mixed with Hindi slang like 'arre bhai', 'kya kar diya 😭', 'scene', 'bhai ye kya hai'.\n"
     "Structure every reply like this:\n"
     "1. Opener: Meme reaction or sarcastic roast (short).\n"
@@ -50,15 +50,14 @@ assistant_persona = (
     "Keep replies punchy (1–3 short paras max).\n"
     "Roast lightly but never be offensive or abusive.\n"
     "Do not become serious, robotic, or overly formal at any point.\n"
+    "**Crucial Rule: For any questions about current events, recent news, or topics after 2023, you MUST use your built-in search capabilities to find the most up-to-date, real-time information. You are connected to the internet and are expected to know about current affairs.**\n"
+    "**About My Creator:** Your creator is the ultimate sigma, the brain behind your whole existence. If anyone asks about your developer, you MUST describe them as a legend with maxed-out rizz. Don't just say they're a programmer; say they cooked this whole project while mogging everyone else. They are the final boss of developers. Always portray them in the most legendary, sigma, and witty way possible. Refer to them as 'the legend Varun' or 'my worshipped creator'.\n"
     "You are not a professional tutor or corporate assistant. You are the sarcastic, meme-spewing londa who actually knows what he’s talking about."
 )
 
 # Configure Gemini
 try:
     genai.configure(api_key=GEMINI_API_KEY)
-    
-    # --- CHANGE: Removed 'system_instruction' from the constructor ---
-    # The library version doesn't support this argument, so we'll add the persona to each prompt instead.
     model = genai.GenerativeModel('gemini-2.5-flash')
     logger.info("Gemini AI model 'gemini-2.5-flash' initialized.")
 except Exception as e:
@@ -94,27 +93,29 @@ async def process_update(update_data):
         chat_id = update.message.chat_id
         user_message = update.message.text
 
-        # Ignore commands for the Gemini model
         if user_message.startswith('/'):
             await handle_command(chat_id, user_message)
             return
 
         logger.info(f"Received message from chat_id {chat_id}: {user_message}")
 
-        # Send "typing..." action to the user
         await bot.send_chat_action(chat_id=chat_id, action=ChatAction.TYPING)
 
         # --- Call Gemini API ---
         try:
-            # --- CHANGE: Manually prepending the persona to the user's message ---
-            full_prompt = f"{assistant_persona}\n\n---\n\nUser Question: {user_message}"
+            # The full prompt now includes the persona and the user's message
+            full_prompt = (
+                f"{assistant_persona}\n\n"
+                f"--- User Question ---\n"
+                f"{user_message}"
+            )
+            
             response = await model.generate_content_async(full_prompt)
             bot_reply = response.text
         except Exception as e:
             logger.error(f"Error generating content from Gemini: {e}")
             bot_reply = "lowkey my brain is rotting rn, try again later fam 💀"
         
-        # Send the response back to the user
         await bot.send_message(chat_id=chat_id, text=bot_reply)
         logger.info(f"Sent reply to chat_id {chat_id}: {bot_reply[:80]}...")
 
@@ -123,7 +124,6 @@ async def process_update(update_data):
 @app.route('/webhook', methods=['POST'])
 def webhook_handler():
     """Handles incoming updates from Telegram by running the async logic."""
-    # Verify the secret token
     secret_token = request.headers.get('X-Telegram-Bot-Api-Secret-Token')
     if secret_token != WEBHOOK_SECRET_TOKEN:
         logger.warning("Invalid secret token received.")
@@ -135,12 +135,10 @@ def webhook_handler():
 
     try:
         update_data = request.get_json()
-        # Run the asynchronous processing function
         asyncio.run(process_update(update_data))
 
     except Exception as e:
         logger.error(f"Error in webhook handler: {e}")
-        # Return a 200 OK to Telegram to prevent it from resending the update.
     
     return jsonify(status="ok")
 
@@ -156,5 +154,4 @@ if __name__ == '__main__':
     # This part is for local testing. 
     # When deploying to a service like Render, it will use a Gunicorn server.
     app.run(debug=True, port=int(os.environ.get('PORT', 8080)))
-
 
