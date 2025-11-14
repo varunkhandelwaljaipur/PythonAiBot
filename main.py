@@ -59,7 +59,7 @@ assistant_persona = (
 try:
     genai.configure(api_key=GEMINI_API_KEY)
     model = genai.GenerativeModel('gemini-2.5-flash')
-    logger.info("Gemini AI model 'gemini-2.5-flash' initialized.")
+    logger.info("Gemini AI model 'gemini-2.0-flash-lite' initialized.")
 except Exception as e:
     logger.error(f"Error initializing Gemini AI: {e}")
     model = None
@@ -154,4 +154,5 @@ if __name__ == '__main__':
     # This part is for local testing. 
     # When deploying to a service like Render, it will use a Gunicorn server.
     app.run(debug=True, port=int(os.environ.get('PORT', 8080)))
+
 
